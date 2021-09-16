@@ -25,30 +25,6 @@ class Scraper(Resource):
 
 api.add_resource(Scraper, "/tokped/<string:shopname>&<int:pagenum>")
 
-def testing_req(user_query):
-    if "shopname" in user_query and "pagenum" in user_query:
-        shopname =  user_query[user_query.index('shopname='):user_query.index('&')].replace('shopname=', '')
-        print(shopname)
-        pagenum = int(user_query[len(user_query)-1])
-        print(pagenum)
-        if pagenum == 0:
-            data = {
-                "message":"Success",
-                "data":scrape(shopname)
-                }
-            return json.dumps(data)
-        elif pagenum > 0:
-            data = {
-                "message":"Success",
-                "data":scrape_some(shopname, pagenum)
-            }
-            return json.dumps(data)
-    data = {
-        "message":"Failed",
-        "data":"What are you doing here, man?"
-    }
-    return json.dumps(data)
-
 def generate_link(shopname, currpage):
     fullurl = 'https://www.tokopedia.com/' + shopname + '/product/page/' + str(currpage)
     return fullurl
@@ -69,14 +45,40 @@ def get_page_spec(fullurl, tag, tagclass):
     soup = BeautifulSoup(r.content, 'html.parser')
     return soup.find_all(tag, class_= tagclass)
 
-def write_json(itemname, itempic, itemprice, itemdesc):
-    jsoncontent = {
+def write_content(itemname, itempic, itemprice, itemdesc):
+    content = {
         "name":itemname,
         "images":itempic,
         "price":itemprice,
         "description":itemdesc
     }
-    return jsoncontent
+    return content
+
+def write_content_ext(itemname, itempic, itemprice, itemdesc, itemtags, itemstock):
+    content = {
+        "name":itemname,
+        "images":itempic,
+        "price":itemprice,
+        "description":itemdesc,
+        "tags":itemtags,
+        "stock":itemstock
+    }
+    return content
+
+def write_json(data):
+    if len(data) > 0:
+        result = {
+            "message":"Success",
+            "data":{
+                "posts":data
+            }
+        }
+    else:
+        result = {
+            "message":"Failed",
+            "data":"Invalid shop name"
+        }
+    return result
 
 def scrape_info(page_div):
     data = []
@@ -88,7 +90,8 @@ def scrape_info(page_div):
             "after-discount":0
         }
         itemdesc = ""
-        itemtag = []
+        itemtags = []
+        itemstock = 0
         itemlink = container.a
         itempage = get_page(itemlink.get('href'))
         itemname = itempage.find('div', class_='css-jmbq56').h1.text
@@ -106,12 +109,17 @@ def scrape_info(page_div):
         except:
              itemprice['after-discount'] = int(itempage.find('div', class_='css-aqsd8m').div.text.replace('Rp', '').replace('.', ''))
         try:
-            itemdesc = itempage.find('div', class_='css-1k1relq').div.text
+            #itemdesc = itempage.find('div', class_='css-1k1relq').div.text
+            itemdesc = str(itempage.find(attrs={'data-testid':'lblPDPDescriptionProduk'})).replace('<div data-testid="lblPDPDescriptionProduk">', '').replace('</div>', '').replace('<br/>','\n')
         except:
             itemdesc = 'No Description Available'
-        count = 0
-        itemtag.append(itempage.find('li', class_='css-1xfnjem').a.text)
-        data.append(write_json(itemname, itempic, itemprice, itemdesc))
+        # temp = itempage.find('div', class_='css-17o7uaz') #Grab item tags here (failed)
+        # print(temp)
+        # for list in temp.find_all('li', class_='css-1xfnjem'):
+        #     itemtags.append(list.a.text)
+        # print(itemtags)
+        # itemstock = itempage.find('div', class_='css-1a2eh9p').b.text #grab item stock
+        data.append(write_content(itemname, itempic, itemprice, itemdesc))
     return data
 
 def scrape(shopname):
@@ -130,12 +138,8 @@ def scrape(shopname):
             else:
                 break
         except:
-            data = {
-                "message":"Failed",
-                "data":"Invalid shop name"
-            }
             break
-    return data
+    return write_json(data)
 
 def scrape_some(shopname, pagenum):
     itemlink = ""
@@ -151,7 +155,7 @@ def scrape_some(shopname, pagenum):
             data.append(scrape_info(page_div))
         else:
             break
-    return data
+    return write_json(data)
 
 if __name__ == "__main__":
     app.run(debug=True)
