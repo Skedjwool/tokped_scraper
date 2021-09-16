@@ -3,7 +3,6 @@ from flask_restful import Api, Resource, reqparse
 import requests
 from bs4 import BeautifulSoup
 import json
-from datetime import datetime
 
 app = Flask(__name__)
 api = Api(app)
@@ -76,7 +75,9 @@ def write_json(data):
     else:
         result = {
             "message":"Failed",
-            "data":"Invalid shop name"
+            "data":{
+                "posts":"Invalid shop name"
+            }
         }
     return result
 
@@ -96,7 +97,7 @@ def scrape_info(page_div):
         itempage = get_page(itemlink.get('href'))
         itemname = itempage.find('div', class_='css-jmbq56').h1.text
         itempic = itempage.find('div', class_='css-1q3zvcj').img.get('src')
-        # temp2 = itempage.find_all('div', class_='css-1aplawl')
+        # temp2 = itempage.find_all('div', class_='css-1aplawl') #attemp to add preview link (suspended)
         # print(temp2)
         # for link in temp2:
         #     link.replace('200-square', '500-square').replace('.webp?ect=4g', '')
@@ -104,15 +105,11 @@ def scrape_info(page_div):
         #     temp.append(temp2)
         try:
             temp = itempage.find('div', class_='css-70qvj9').text
-            print(temp)
             itemprice['before-discount'] = int(temp[temp.index('Rp'):].replace('Rp', '').replace('.', ''))
-            print(itemprice['before-discount'])
-            # itemprice['before-discount'] = int(itemprice['before-discount']).text.replace('Rp', '').replace('.', '')
             itemprice['after-discount'] = int(itempage.find('div', class_='css-aqsd8m').div.text)
         except:
              itemprice['after-discount'] = int(itempage.find('div', class_='css-aqsd8m').div.text.replace('Rp', '').replace('.', ''))
         try:
-            #itemdesc = itempage.find('div', class_='css-1k1relq').div.text
             itemdesc = str(itempage.find(attrs={'data-testid':'lblPDPDescriptionProduk'})).replace('<div data-testid="lblPDPDescriptionProduk">', '').replace('</div>', '').replace('<br/>','\n')
         except:
             itemdesc = 'No Description Available'
@@ -133,14 +130,11 @@ def scrape(shopname):
     while True:
         itemlink = ""
         currpage+=1
-        try:
-            page_div = get_page_spec(generate_link(shopname, currpage), 'div', 'css-1sn1xa2')
-            if len(page_div)>0:
-                print('Current Page: ' + str(currpage))
-                data.append(scrape_info(page_div))
-            else:
-                break
-        except:
+        page_div = get_page_spec(generate_link(shopname, currpage), 'div', 'css-1sn1xa2')
+        if len(page_div)>0:
+            data.append(scrape_info(page_div))
+            print('Fetched ' + str(len(page_div)) +' from page: ' + str(currpage))
+        else:
             break
     return write_json(data)
 
@@ -155,8 +149,8 @@ def scrape_some(shopname, pagenum):
         currpage+=1
         page_div = get_page_spec(generate_link(shopname, currpage), 'div', 'css-1sn1xa2')
         if len(page_div)>0:
-            print('Current Page: ' + str(currpage))
             data.append(scrape_info(page_div))
+            print('Fetching ' + str(len(page_div)) +' from page: ' + str(currpage))
         else:
             break
     return write_json(data)
