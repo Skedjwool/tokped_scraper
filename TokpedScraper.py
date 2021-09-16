@@ -101,11 +101,14 @@ def scrape_info(page_div):
         # for link in temp2:
         #     link.replace('200-square', '500-square').replace('.webp?ect=4g', '')
         #     print('test2: ' + link)
-        #     break
-        # temp.append(temp2)
+        #     temp.append(temp2)
         try:
-            itemprice['before-discount'] = int(itempage.find('p', class_='css-18rr7u8').text.replace('Rp', '').replace('.', ''))
-            itemprice['after-discount'] = int(itempage.find('div', class_='css-aqsd8m').div.text.replace('Rp', '').replace('.', ''))
+            temp = itempage.find('div', class_='css-70qvj9').text
+            print(temp)
+            itemprice['before-discount'] = int(temp[temp.index('Rp'):].replace('Rp', '').replace('.', ''))
+            print(itemprice['before-discount'])
+            # itemprice['before-discount'] = int(itemprice['before-discount']).text.replace('Rp', '').replace('.', '')
+            itemprice['after-discount'] = int(itempage.find('div', class_='css-aqsd8m').div.text)
         except:
              itemprice['after-discount'] = int(itempage.find('div', class_='css-aqsd8m').div.text.replace('Rp', '').replace('.', ''))
         try:
@@ -152,6 +155,7 @@ def scrape_some(shopname, pagenum):
         currpage+=1
         page_div = get_page_spec(generate_link(shopname, currpage), 'div', 'css-1sn1xa2')
         if len(page_div)>0:
+            print('Current Page: ' + str(currpage))
             data.append(scrape_info(page_div))
         else:
             break
